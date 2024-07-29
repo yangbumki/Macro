@@ -4,43 +4,43 @@
 
 #include <windows.h>
 
+#include "ActivateMacro.h"
+#include "DeactivateMacro.h"
+#include "Recorder.h"
+
 #define ESC     27
 
-#define NONE_ACTIVATE_MACRO     1
+#define NONE_ACTIVATE_MACRO     0
 #define ACTIVATE_MACRO          0
+#define RECORDER                1
+
+#define TICK_TIME               1000
 
 using namespace std;
 
 #if NONE_ACTIVATE_MACRO
 int main() {
 
-    vector<INPUT> inputs;
+    ActivateMacro am(1000);
 
-    INPUT input;
+    am.RegisterMacroKey('A');
+    am.RegisterMacroKey('A', true);
 
-    input.ki.wVk = VK_LSHIFT;
-    input.type = INPUT_KEYBOARD;
+    float currentTime = 0.0,
+        lastTime = 0.0,
+        tickTime = TICK_TIME;
 
-    /*inputs.push_back(input);*/
+    am.MacroStart();
 
-    ZeroMemory(&input, sizeof(INPUT));
 
-    input.ki.wVk = 'E';
-    input.type = INPUT_KEYBOARD;
-
-    inputs.push_back(input);
-    
-    byte idx = 0;
+    auto inputs = am.GetRegisterInputs();
 
     while (1) {
-        Sleep(100);
-
-        for (auto& input : inputs) {
-            SendInput(1, &input, sizeof(INPUT));
-        }
+        Sleep(TICK_TIME);
+        am.MacroRun();
+        cout << "Macro running" << endl;
 
         if (_kbhit()) {
-            
             if (_getch() == ESC) {
                 break;
             }
@@ -49,39 +49,16 @@ int main() {
 
     return 0;
 }
-#elif ACTIVATE_MACRO
-ULONG ProcIDFromWnd(HWND hwnd) // 윈도우 핸들로 프로세스 아이디 얻기  
-{
-    ULONG idProc;
-    GetWindowThreadProcessId(hwnd, &idProc);
-    return idProc;
-}
+#endif
 
-HWND GetWinHandle(ULONG pid) // 프로세스 아이디로 윈도우 핸들 얻기  
-{
-    HWND tempHwnd = FindWindow(NULL, NULL); // 최상위 윈도우 핸들 찾기  
-
-    while (tempHwnd != NULL)
-    {
-        if (GetParent(tempHwnd) == NULL) // 최상위 핸들인지 체크, 버튼 등도 핸들을 가질 수 있으므로 무시하기 위해  
-            if (pid == ProcIDFromWnd(tempHwnd))
-                return tempHwnd;
-        tempHwnd = GetWindow(tempHwnd, GW_HWNDNEXT); // 다음 윈도우 핸들 찾기  
-    }
-    return NULL;
-}
-
+#if RECORDER
 int main() {
-    auto arkHwnd = FindWindow(L"UnrealWindow", L"ARK: Survival Evolved");
-    if (arkHwnd == NULL) {
-        return -1;
-    }
+    Recorder rc;
 
-    while (1) {
-        Sleep(100);
-        SendMessage(arkHwnd, WM_ACTIVATE, 1, NULL);
-        SendMessage(arkHwnd, WM_KEYDOWN, VK_LSHIFT, VK_LSHIFT);
-        SendMessage(arkHwnd, WM_KEYDOWN, 0x57, 0x57);
+    rc.Recording();
+
+    while (true) {
+
         if (_kbhit()) {
             if (_getch() == ESC) break;
         }

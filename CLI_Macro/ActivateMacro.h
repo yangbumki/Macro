@@ -22,32 +22,46 @@ private:
 	//변수
 	vector<INPUT> inputs{};
 	unsigned int tickTime;
-	byte macroStatus;
+	signed char macroStatus = MACRO_INIT;
 
-	HANDLE threadHandle;
+	//스레드 관련 변수
+	//다른 컴포넌트가 부착되었을 경우 스레드 간의 동기화를 위하여 미리 생성
+	HANDLE  threadHandle  = NULL,
+				 macroMtx = NULL;
+
+	CRITICAL_SECTION	cs{};
+	CONDITION_VARIABLE	updateConditionVar{};
 
 	//함수
 	void WarningMessage(const string msg);
 
 	bool SetMacroTime(int tickTime);
 	unsigned int GetMacroTime();
+	
+	//스레드 관련 함수
+	HANDLE GetMutex();
+	CONDITION_VARIABLE GetConditionVar();
+	CRITICAL_SECTION GetCriticalSection();
 
 	bool CreateSlaveThread();
 	static DWORD WINAPI MacroThread(LPVOID args);
 
 public:
-	ACTIVATE_MACRO(int tickTime);
+	ACTIVATE_MACRO(int tickTime = 0);
 	~ACTIVATE_MACRO();
 
 	byte GetMacroStatus();
 	bool MacroStart();
 	bool MacroStop();
+	//스레드 동기화를 위한 함수
+	bool MacroRun();
 
 protected:
 	bool MacroUpdate();
 
 public:
-	bool RegisterMacroKey(const byte key);
+	//bool RegisterMacroKey(const byte key);
+	bool RegisterMacroKey(const byte key, const bool up = false);
 	vector<INPUT> GetRegisterInputs();
 	
 }ActivateMacro;

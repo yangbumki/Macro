@@ -3,6 +3,7 @@
 ACTIVATE_MACRO::ACTIVATE_MACRO(int tickTime) {
 	SetMacroTime(tickTime);
 
+	this->MacroStart();
 }
 
 ACTIVATE_MACRO::~ACTIVATE_MACRO() {
@@ -10,7 +11,7 @@ ACTIVATE_MACRO::~ACTIVATE_MACRO() {
 }
 
 void ACTIVATE_MACRO::WarningMessage(const string msg) {
-	cout<< "===[ACTIVATE_MACRO]===" << endl;
+	cout << "===[ACTIVATE_MACRO]===" << endl;
 	cerr << "[WARNING] : " << msg << endl;
 }
 
@@ -34,11 +35,55 @@ unsigned int ACTIVATE_MACRO::GetMacroTime() {
 	return this->tickTime;
 }
 
+HANDLE ACTIVATE_MACRO::GetMutex() {
+	if (macroMtx == NULL) {
+		WarningMessage("Failed to GetMutex");
+	}
+
+	return macroMtx;
+}
+
+CONDITION_VARIABLE ACTIVATE_MACRO::GetConditionVar() {
+	return this->updateConditionVar;
+}
+
+CRITICAL_SECTION ACTIVATE_MACRO::GetCriticalSection() {
+	return cs;
+}
+
 bool ACTIVATE_MACRO::CreateSlaveThread() {
-	if(threadHandle == NULL) {
+	if (threadHandle != NULL) {
 		WarningMessage("Aleady exist thread haddle");
 		return false;
 	}
+
+	//2024-07-22 뮤텍스 추가
+	if (macroMtx != NULL) {
+		WarningMessage("Aleady exist mutex");
+		return false;
+	}
+
+	//조건 변수 추가
+	if (updateConditionVar.Ptr != nullptr) {
+		WarningMessage("Aleady exist condition-variable");
+		return false;
+	}
+
+	//임계영역 추가
+	if (cs.DebugInfo != NULL) {
+		WarningMessage("Aleady exist critical-section");
+		return false;
+	}
+
+	macroMtx = CreateMutex(NULL, TRUE, NULL);
+	if (macroMtx == NULL) {
+		WarningMessage("Failed to createMutex");
+		return false;
+	}
+
+	InitializeConditionVariable(&updateConditionVar);
+	
+	InitializeCriticalSection(&cs);
 
 	threadHandle = CreateThread(NULL, 0, MacroThread, this, 0, NULL);
 	if (threadHandle == NULL) {
@@ -54,10 +99,31 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 		return -1;
 	}
 
+	HANDLE macroMtx = actMacro->GetMutex();
+	if (macroMtx == NULL) {
+		MessageBox(NULL, L"Failed to GetMutex", L"ERROR", NULL);
+		return -1;
+	}
+
+	CONDITION_VARIABLE updateCv = actMacro->GetConditionVar();
+
+	CRITICAL_SECTION cs = actMacro->GetCriticalSection();
+
 	vector<INPUT> inputs;
 	int size = 0;
 
+	unsigned int tickTime = actMacro->GetMacroTime();
+
 	while (true) {
+		if (tickTime > 0) {
+			Sleep(tickTime);
+		}
+		else {
+			//뮤텍스
+			WaitForSingleObject(macroMtx, INFINITE);
+			ReleaseMutex(macroMtx);
+		}
+
 		switch (actMacro->GetMacroStatus()) {
 		case MACRO_STOP:
 			while (actMacro->GetMacroStatus() != MACRO_START);
@@ -67,22 +133,32 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 			MessageBox(NULL, L"Failed to running thread", L"ERROR", NULL);
 			return -1;
 		case MACRO_UPDATE:
+			//SleepConditionVariableCS(&updateCv, &cs, INFINITE);
 			inputs = actMacro->GetRegisterInputs();
 			size = inputs.size();
 
 			actMacro->MacroStart();
+			WakeConditionVariable(&updateCv);
 			break;
 		case MACRO_START:
-			if (size <= 0) {
+			if (size < 0) {
 				MessageBox(NULL, L"Failed to running thread", L"ERROR", NULL);
 				return -1;
 			}
-			for (int cnt = 0; cnt < size; cnt+=2) {
+
+			/*for (int cnt = 0; cnt < size; cnt += 2) {
 				SendInput(2, &inputs[cnt], sizeof(INPUT));
+			}*/
+
+			for (auto& input : inputs) {
+				SendInput(1, &input, sizeof(INPUT));
 			}
+
 		default:
 			break;
 		}
+
+		
 	}
 
 	return 0;
@@ -131,25 +207,59 @@ bool ACTIVATE_MACRO::MacroStop() {
 	return true;
 }
 
+bool ACTIVATE_MACRO::MacroRun() {
+	if (macroStatus != MACRO_START) {
+		WarningMessage("Not starting macro");
+		return false;
+	}
+
+	ReleaseMutex(macroMtx);
+	//2024-07-22 뮤텍스 개체 소유권 가져오기
+	WaitForSingleObject(macroMtx, INFINITE);
+}
+
 bool ACTIVATE_MACRO::MacroUpdate() {
+	EnterCriticalSection(&cs);
 	this->macroStatus = MACRO_UPDATE;
+	LeaveCriticalSection(&cs);
+	//동기화
+	//WakeConditionVariable(&updateConditionVar);
+	SleepConditionVariableCS(&updateConditionVar, &cs, INFINITE);
+	//cs랑 같이 사용해야함
 	return true;
 }
 
-bool ACTIVATE_MACRO::RegisterMacroKey(const byte key) {
+//bool ACTIVATE_MACRO::RegisterMacroKey(const byte key) {
+//	//key 예외처리 코드 추가 필요
+//
+//	INPUT inputDown, inputUp;
+//
+//	inputDown.type = INPUT_KEYBOARD;
+//	inputDown.ki.wVk = key;
+//
+//	inputUp.type = INPUT_KEYBOARD;
+//	inputUp.ki.wVk = key;
+//	inputUp.ki.dwFlags = KEYEVENTF_KEYUP;
+//
+//	inputs.push_back(inputDown);
+//	inputs.push_back(inputUp);
+//
+//	MacroUpdate();
+//
+//	return true;
+//}
+
+bool ACTIVATE_MACRO::RegisterMacroKey(const byte key, const bool up) {
 	//key 예외처리 코드 추가 필요
+	INPUT input{};
 
-	INPUT inputDown, inputUp;
+	input.type = INPUT_KEYBOARD;
+	input.ki.wVk = key;
 
-	inputDown.type = INPUT_KEYBOARD;
-	inputDown.ki.wVk = key;
+	if (up)
+		input.ki.dwFlags = KEYEVENTF_KEYUP;
 
-	inputUp.type = INPUT_KEYBOARD;
-	inputUp.ki.wVk = key;
-	inputUp.ki.dwFlags = KEYEVENTF_KEYUP;
-
-	inputs.push_back(inputDown);
-	inputs.push_back(inputUp);
+	inputs.push_back(input);
 
 	MacroUpdate();
 
