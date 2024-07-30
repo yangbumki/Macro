@@ -90,6 +90,8 @@ bool ACTIVATE_MACRO::CreateSlaveThread() {
 		WarningMessage("Failed to create thread");
 		return false;
 	}
+
+	return true;
 }
 
 DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
@@ -109,7 +111,7 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 
 	CRITICAL_SECTION cs = actMacro->GetCriticalSection();
 
-	vector<INPUT> inputs;
+	vector<EXTENDED_INPUT> extInputs;
 	int size = 0;
 
 	unsigned int tickTime = actMacro->GetMacroTime();
@@ -134,8 +136,8 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 			return -1;
 		case MACRO_UPDATE:
 			//SleepConditionVariableCS(&updateCv, &cs, INFINITE);
-			inputs = actMacro->GetRegisterInputs();
-			size = inputs.size();
+			extInputs = actMacro->GetRegisterInputs();
+			size = extInputs.size();
 
 			actMacro->MacroStart();
 			WakeConditionVariable(&updateCv);
@@ -150,8 +152,9 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 				SendInput(2, &inputs[cnt], sizeof(INPUT));
 			}*/
 
-			for (auto& input : inputs) {
-				SendInput(1, &input, sizeof(INPUT));
+			for (auto& extInput : extInputs) {
+				Sleep(extInput.recordingTime);
+				SendInput(1, &extInput.input, sizeof(INPUT));
 			}
 
 		default:
@@ -251,22 +254,44 @@ bool ACTIVATE_MACRO::MacroUpdate() {
 
 bool ACTIVATE_MACRO::RegisterMacroKey(const byte key, const bool up) {
 	//key 예외처리 코드 추가 필요
-	INPUT input{};
+	EXTENDED_INPUT extInput{};
 
-	input.type = INPUT_KEYBOARD;
-	input.ki.wVk = key;
+	extInput.input.type = INPUT_KEYBOARD;
+	extInput.input.ki.wVk = key;
 
 	if (up)
-		input.ki.dwFlags = KEYEVENTF_KEYUP;
+		extInput.input.ki.dwFlags = KEYEVENTF_KEYUP;
 
-	inputs.push_back(input);
+	inputs.push_back(extInput);
 
 	MacroUpdate();
 
 	return true;
 }
 
-vector<INPUT> ACTIVATE_MACRO::GetRegisterInputs() {
+bool ACTIVATE_MACRO::RegisterMacroKey(const DWORD time, const WPARAM keyType, const byte key) {
+	EXTENDED_INPUT extInput{};
+
+	if (time < 0) {
+		cerr << "Failed to register macro key" << endl;
+		return false;
+	}
+
+	extInput.recordingTime = time;
+	extInput.input.type = INPUT_KEYBOARD;
+	extInput.input.ki.wVk = key;
+
+	if (keyType == WM_KEYUP)
+		extInput.input.ki.dwFlags = KEYEVENTF_KEYUP;
+
+	inputs.push_back(extInput);
+
+	MacroUpdate();
+
+	return true;
+}
+
+vector<EXTENDED_INPUT> ACTIVATE_MACRO::GetRegisterInputs() {
 	if (inputs.empty()) {
 		WarningMessage("Nothings exist Inputs");
 	}

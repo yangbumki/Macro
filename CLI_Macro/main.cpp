@@ -12,11 +12,40 @@
 
 #define NONE_ACTIVATE_MACRO     0
 #define ACTIVATE_MACRO          0
-#define RECORDER                1
+#define RECORDER                0
 
 #define TICK_TIME               1000
 
 using namespace std;
+
+int main() {
+    ActivateMacro am;
+    Recorder rc;
+
+    rc.Recording();
+
+    cout << "===Recording===" << endl;
+    Sleep(5000);
+    cout << "===End===" << endl;
+
+    auto rcDatas = rc.GetRecordData();
+    
+    for (auto& data : rcDatas) {
+        am.RegisterMacroKey(data.recordingTime, data.keyType, data.vkCode);
+    }
+
+    cout << "===Macro Start===" << endl;
+    am.MacroRun();
+
+    while (1) {
+        
+        if (_kbhit()) {
+            if (_getch() == ESC) break;
+        }
+    }
+
+    return 0;
+}
 
 #if NONE_ACTIVATE_MACRO
 int main() {

@@ -64,6 +64,8 @@ DWORD WINAPI RECORDER::RecordingThread(void* arg) {
 	return 0;
 }
 
+vector<KeyHistory> RECORDER::kbHistory;
+
 LRESULT CALLBACK RECORDER::KeyHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
 	//wParam 가상 키 코드
 	//cout << "wParam : " << wParam << endl;
@@ -71,8 +73,6 @@ LRESULT CALLBACK RECORDER::KeyHookProc(int nCode, WPARAM wParam, LPARAM lParam) 
 	if (nCode < 0) {
 		return CallNextHookEx(NULL, nCode, wParam, lParam);
 	}
-
-	static vector<KeyHistory> kbHistory;
 	
 	KBDLLHOOKSTRUCT* kls = (KBDLLHOOKSTRUCT*)lParam;
 
@@ -129,4 +129,46 @@ void RECORDER::End() {
 	if (threadHandle != NULL) {
 		PostThreadMessage(GetThreadId(threadHandle), WM_QUIT, 1, 0);
 	}
+}
+
+vector<KeyHistory> RECORDER::GetRecordData() {
+	return kbHistory;
+}
+
+bool RECORDER::ResetRecordData() {
+	if (kbHistory.empty()) {
+		cerr << "Aleady empty record data" << endl;
+		return false;
+	}
+
+	kbHistory.clear();
+	kbHistory.resize(0);
+
+	return true;
+}
+
+bool RECORDER::SaveRecordData(const std::string fileName) {
+	if (kbHistory.empty()) {
+		cerr << "Failed to save record data" << endl;
+		return false;
+	}
+
+	int idx = 0;
+
+	for (auto& kb : kbHistory) {
+		auto appName = to_string(++idx);
+
+		WritePrivateProfileStringA(appName.c_str(), "RecordingTime", to_string(kb.recordingTime).c_str(), fileName.c_str());
+
+		if (kb.keyType == WM_KEYDOWN) {
+			WritePrivateProfileStringA(appName.c_str(), "KeyType", "KEYDOWN", fileName.c_str());
+		}
+		else if (kb.keyType == WM_KEYUP) {
+			WritePrivateProfileStringA(appName.c_str(), "KeyType", "KEYUP", fileName.c_str());
+		}
+
+		WritePrivateProfileStringA(appName.c_str(), "VKCode", to_string(kb.vkCode).c_str(), fileName.c_str());
+	}
+
+	return true;
 }

@@ -8,6 +8,11 @@
 
 using namespace std;
 
+typedef struct EXTENDED_INPUT {
+	DWORD recordingTime;
+	INPUT input;
+}ExtendedInput;
+
 typedef class ACTIVATE_MACRO {
 private:
 	//enum
@@ -20,7 +25,8 @@ private:
 	};
 
 	//º¯¼ö
-	vector<INPUT> inputs{};
+	//vector<INPUT> inputs{};
+	vector<ExtendedInput> inputs{};
 	unsigned int tickTime;
 	signed char macroStatus = MACRO_INIT;
 
@@ -62,6 +68,8 @@ protected:
 public:
 	//bool RegisterMacroKey(const byte key);
 	bool RegisterMacroKey(const byte key, const bool up = false);
-	vector<INPUT> GetRegisterInputs();
+	bool RegisterMacroKey(const DWORD time, const WPARAM keyType, const byte key);
+
+	vector<EXTENDED_INPUT> GetRegisterInputs();
 	
 }ActivateMacro;
