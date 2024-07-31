@@ -18,7 +18,9 @@ void ACTIVATE_MACRO::WarningMessage(const string msg) {
 
 
 bool ACTIVATE_MACRO::SetMacroTime(int tick) {
-	if (tick <= 0) {
+	//2024-07-31 Recorder 값을 고대로 반영하기 위해 0 허용
+	//if (tick <= 0) {
+	if (tick < 0) {
 		WarningMessage("Failed to InitMacroTime");
 		return false;
 	}
@@ -136,10 +138,12 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 			return -1;
 		case MACRO_UPDATE:
 			//SleepConditionVariableCS(&updateCv, &cs, INFINITE);
+			//EnterCriticalSection(&cs);
 			extInputs = actMacro->GetRegisterInputs();
 			size = extInputs.size();
 
 			actMacro->MacroStart();
+			//LeaveCriticalSection(&cs);
 			WakeConditionVariable(&updateCv);
 			break;
 		case MACRO_START:
@@ -225,6 +229,7 @@ bool ACTIVATE_MACRO::MacroUpdate() {
 	EnterCriticalSection(&cs);
 	this->macroStatus = MACRO_UPDATE;
 	LeaveCriticalSection(&cs);
+	
 	//동기화
 	//WakeConditionVariable(&updateConditionVar);
 	SleepConditionVariableCS(&updateConditionVar, &cs, INFINITE);
@@ -253,6 +258,13 @@ bool ACTIVATE_MACRO::MacroUpdate() {
 //}
 
 bool ACTIVATE_MACRO::RegisterMacroKey(const byte key, const bool up) {
+	if (macroStatus == MACRO_INIT) {
+		cerr << "Failed to register macro key" << endl;
+		cerr << "Plz start macro" << endl;
+
+		return false;
+	}
+
 	//key 예외처리 코드 추가 필요
 	EXTENDED_INPUT extInput{};
 
@@ -270,6 +282,13 @@ bool ACTIVATE_MACRO::RegisterMacroKey(const byte key, const bool up) {
 }
 
 bool ACTIVATE_MACRO::RegisterMacroKey(const DWORD time, const WPARAM keyType, const byte key) {
+	if (macroStatus == MACRO_INIT) {
+		cerr << "Failed to register macro key" << endl;
+		cerr << "Plz start macro" << endl;
+
+		return false;
+	}
+
 	EXTENDED_INPUT extInput{};
 
 	if (time < 0) {

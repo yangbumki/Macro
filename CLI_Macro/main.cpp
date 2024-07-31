@@ -19,7 +19,7 @@
 using namespace std;
 
 int main() {
-    ActivateMacro am;
+    ActivateMacro am(1000);
     Recorder rc;
 
     rc.Recording();
@@ -31,7 +31,9 @@ int main() {
     auto rcDatas = rc.GetRecordData();
     
     for (auto& data : rcDatas) {
-        am.RegisterMacroKey(data.recordingTime, data.keyType, data.vkCode);
+        if (am.RegisterMacroKey(data.recordingTime, data.keyType, data.vkCode)) {
+            break;
+        }
     }
 
     cout << "===Macro Start===" << endl;
