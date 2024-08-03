@@ -19,81 +19,76 @@
 using namespace std;
 
 int main() {
-    ActivateMacro am(1000);
+    ActivateMacro am(10);
     Recorder rc;
 
-    rc.Recording();
+   byte input;
 
-    cout << "===Recording===" << endl;
-    Sleep(5000);
-    cout << "===End===" << endl;
+    while (1) {
+        cout << "======BGY_MACRO======" << endl;
+        cout << "1. Recording" << endl;
+        cout << "2. Macro Start" << endl;
+        cout << "3. Exit" << endl<<endl;
 
-    auto rcDatas = rc.GetRecordData();
-    
-    for (auto& data : rcDatas) {
-        if (am.RegisterMacroKey(data.recordingTime, data.keyType, data.vkCode)) {
+        cout << "INPUT : "; cin >> input;
+
+        switch (input) {
+        case '1': {
+            rc.ResetRecordData();
+
+            cout << "Recording Start" << endl;
+            cout << "If you want to end the macro" << endl;
+            cout << "Press \"ESC\"" << endl;
+            rc.Recording();
+
+            while (1) {
+                if (_kbhit()) {
+                    if (_getch() == ESC) {
+                        rc.End();
+                        break;
+                    }
+                }
+            }
+
+            auto rcDatas = rc.GetRecordData();
+
+            cout << "Saving Recording Data" << endl;
+
+            for (auto& data : rcDatas) {
+                if (data.vkCode == VK_ESCAPE) break;
+                if (!am.RegisterMacroKey(data.recordingTime, data.keyType, data.vkCode, data.scanCode)) {
+                    break;
+                }
+            }
             break;
         }
-    }
+        case '2':
+            am.MacroStart();
+            cout << "Macro Start : after 3 seconds" << endl;
+            Sleep(3000);
+            
+            am.MacroRun();
 
-    cout << "===Macro Start===" << endl;
-    am.MacroRun();
-
-    while (1) {
-        
-        if (_kbhit()) {
-            if (_getch() == ESC) break;
-        }
-    }
-
-    return 0;
-}
-
-#if NONE_ACTIVATE_MACRO
-int main() {
-
-    ActivateMacro am(1000);
-
-    am.RegisterMacroKey('A');
-    am.RegisterMacroKey('A', true);
-
-    float currentTime = 0.0,
-        lastTime = 0.0,
-        tickTime = TICK_TIME;
-
-    am.MacroStart();
-
-
-    auto inputs = am.GetRegisterInputs();
-
-    while (1) {
-        Sleep(TICK_TIME);
-        am.MacroRun();
-        cout << "Macro running" << endl;
-
-        if (_kbhit()) {
-            if (_getch() == ESC) {
-                break;
+            cout << "If you want to end the macro" << endl;
+            cout << "Press \"ESC\"" << endl;
+            while (1) {
+                if (_kbhit()) {
+                    if (_getch() == ESC) {
+                        am.MacroStop();
+                        break;
+                    }
+                }
             }
+            break;
+        case '3':
+            cout << "Closing..." << endl;
+            goto EXIT;
+            break;
+        default:
+            cout << "Invalid Value"<< endl;
         }
     }
 
+EXIT:
     return 0;
 }
-#endif
-
-#if RECORDER
-int main() {
-    Recorder rc;
-
-    rc.Recording();
-
-    while (true) {
-
-        if (_kbhit()) {
-            if (_getch() == ESC) break;
-        }
-    }
-    return 0;
-}
-#endif

@@ -12,6 +12,7 @@ typedef struct KEYBOARD_HISTORY {
 	DWORD recordingTime;
 	WPARAM keyType;
 	DWORD vkCode;
+	DWORD scanCode;
 }KeyHistory;
 
 typedef class RECORDER {

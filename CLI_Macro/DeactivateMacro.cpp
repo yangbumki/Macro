@@ -37,3 +37,9 @@ bool DEACTIVATE_MACRO::GetWindow(const DWORD pid) {
 
 	return false;
 }
+
+bool DEACTIVATE_MACRO::RegisterMacroKey(const DWORD time, const WPARAM keyType, const byte key, const DWORD scanCode) {
+	
+
+	return true;
+}

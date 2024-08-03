@@ -17,4 +17,6 @@ public:
 
 	bool GetWindow(const string title);
 	bool GetWindow(const DWORD  pid);
+
+	bool RegisterMacroKey(const DWORD time, const WPARAM keyType, const byte key, const DWORD scanCode);
 }DeactivateMacro;

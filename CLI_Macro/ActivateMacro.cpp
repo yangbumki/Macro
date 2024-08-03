@@ -15,12 +15,11 @@ void ACTIVATE_MACRO::WarningMessage(const string msg) {
 	cerr << "[WARNING] : " << msg << endl;
 }
 
-
-
 bool ACTIVATE_MACRO::SetMacroTime(int tick) {
 	//2024-07-31 Recorder 값을 고대로 반영하기 위해 0 허용
 	//if (tick <= 0) {
-	if (tick < 0) {
+	//2024-08-02 입력 값 딜레이 없이 사용 할 경우 오류 발생
+	if (tick <= 0) {
 		WarningMessage("Failed to InitMacroTime");
 		return false;
 	}
@@ -45,8 +44,16 @@ HANDLE ACTIVATE_MACRO::GetMutex() {
 	return macroMtx;
 }
 
-CONDITION_VARIABLE ACTIVATE_MACRO::GetConditionVar() {
-	return this->updateConditionVar;
+//CONDITION_VARIABLE ACTIVATE_MACRO::GetConditionVar() {
+//	return this->updateConditionVar;
+//}
+
+//CONDITION_VARIABLE& ACTIVATE_MACRO::GetConditionVar() {
+//	return this->updateConditionVar;
+//}
+
+CONDITION_VARIABLE* ACTIVATE_MACRO::GetConditionVar() {
+	return &this->updateConditionVar;
 }
 
 CRITICAL_SECTION ACTIVATE_MACRO::GetCriticalSection() {
@@ -109,7 +116,7 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 		return -1;
 	}
 
-	CONDITION_VARIABLE updateCv = actMacro->GetConditionVar();
+	auto updateCv = actMacro->GetConditionVar();
 
 	CRITICAL_SECTION cs = actMacro->GetCriticalSection();
 
@@ -118,9 +125,14 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 
 	unsigned int tickTime = actMacro->GetMacroTime();
 
+	byte macroStat = 0;
+
 	while (true) {
+		macroStat = actMacro->GetMacroStatus();
+
+		//딜레이가 없을 경우, 매크로 자체 입력 값 중복됨
 		if (tickTime > 0) {
-			Sleep(tickTime);
+				Sleep(tickTime);
 		}
 		else {
 			//뮤텍스
@@ -128,7 +140,7 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 			ReleaseMutex(macroMtx);
 		}
 
-		switch (actMacro->GetMacroStatus()) {
+		switch (macroStat) {
 		case MACRO_STOP:
 			while (actMacro->GetMacroStatus() != MACRO_START);
 			break;
@@ -142,11 +154,15 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 			extInputs = actMacro->GetRegisterInputs();
 			size = extInputs.size();
 
-			actMacro->MacroStart();
+			//2024-08-02 업데이트가 다안된 상태에서 매크로 시작되는 상태로 변함 actMacro->MacroStart();
 			//LeaveCriticalSection(&cs);
-			WakeConditionVariable(&updateCv);
+			//WakeConditionVariable(&updateCv);
+			//WakeAllConditionVariable(&updateCv);
+			// 2024-08-02 CONDITION_VARIABLE 내부 포인터 값을 사용하는 것이아닌 주소 값을 사용
+			//WakeConditionVariable(&actMacro->updateConditionVar);
+			WakeConditionVariable(updateCv);
 			break;
-		case MACRO_START:
+		case MACRO_START: {
 			if (size < 0) {
 				MessageBox(NULL, L"Failed to running thread", L"ERROR", NULL);
 				return -1;
@@ -156,10 +172,19 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 				SendInput(2, &inputs[cnt], sizeof(INPUT));
 			}*/
 
+			unsigned int prevRecordingTime = 0;
+
 			for (auto& extInput : extInputs) {
-				Sleep(extInput.recordingTime);
+				macroStat = actMacro->GetMacroStatus();
+				if (macroStat == MACRO_STOP) break;
+
+				Sleep(extInput.recordingTime - prevRecordingTime);
+				prevRecordingTime = extInput.recordingTime;
+
+				cout << "extInput.recordingTime : " << extInput.recordingTime << endl;
 				SendInput(1, &extInput.input, sizeof(INPUT));
 			}
+		}
 
 		default:
 			break;
@@ -209,6 +234,10 @@ bool ACTIVATE_MACRO::MacroStop() {
 		break;
 	default:
 		break;
+	}
+
+	if (threadHandle != NULL) {
+		PostThreadMessage(GetThreadId(threadHandle), WM_QUIT, 1, 0);
 	}
 
 	return true;
@@ -281,7 +310,7 @@ bool ACTIVATE_MACRO::RegisterMacroKey(const byte key, const bool up) {
 	return true;
 }
 
-bool ACTIVATE_MACRO::RegisterMacroKey(const DWORD time, const WPARAM keyType, const byte key) {
+bool ACTIVATE_MACRO::RegisterMacroKey(const DWORD time, const WPARAM keyType, const byte key, const DWORD scanCode) {
 	if (macroStatus == MACRO_INIT) {
 		cerr << "Failed to register macro key" << endl;
 		cerr << "Plz start macro" << endl;
@@ -299,6 +328,7 @@ bool ACTIVATE_MACRO::RegisterMacroKey(const DWORD time, const WPARAM keyType, co
 	extInput.recordingTime = time;
 	extInput.input.type = INPUT_KEYBOARD;
 	extInput.input.ki.wVk = key;
+	extInput.input.ki.wScan = scanCode;
 
 	if (keyType == WM_KEYUP)
 		extInput.input.ki.dwFlags = KEYEVENTF_KEYUP;

@@ -2,10 +2,6 @@
 
 RECORDER::RECORDER() {
 	status = REC_INIT;
-
-	
-
-
 }
 
 RECORDER::~RECORDER() {
@@ -82,13 +78,18 @@ LRESULT CALLBACK RECORDER::KeyHookProc(int nCode, WPARAM wParam, LPARAM lParam) 
 
 	//cout << "Recording Time " << (kls->time - time) / 1000 << "." << (kls->time - time) % 1000 << endl;
 
-	//cout << "kls->vkCode : " << kls->vkCode << endl;
+ 	cout << "wParam : " << wParam << endl;
+	cout << "lParam : " << lParam<< endl;
+	cout << "kls->vkCode : " << kls->vkCode << endl;
+	cout << "kls->scanCode : " << kls->scanCode << endl;
 	
 	KeyHistory kh{};
 
 	kh.keyType = wParam;
 	kh.recordingTime = recordingTime;
 	kh.vkCode = kls->vkCode;
+	kh.scanCode = kls->scanCode;
+	
 	
 	kbHistory.push_back(kh);
 

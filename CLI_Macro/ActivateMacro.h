@@ -41,12 +41,15 @@ private:
 	//함수
 	void WarningMessage(const string msg);
 
-	bool SetMacroTime(int tickTime);
-	unsigned int GetMacroTime();
+	//2024-08-02 public 으로 이동
+	/*bool SetMacroTime(int tickTime);
+	unsigned int GetMacroTime();*/
 	
 	//스레드 관련 함수
 	HANDLE GetMutex();
-	CONDITION_VARIABLE GetConditionVar();
+	//CONDITION_VARIABLE GetConditionVar();
+	//CONDITION_VARIABLE& GetConditionVar();
+	CONDITION_VARIABLE* GetConditionVar();
 	CRITICAL_SECTION GetCriticalSection();
 
 	bool CreateSlaveThread();
@@ -66,9 +69,12 @@ protected:
 	bool MacroUpdate();
 
 public:
+	bool SetMacroTime(int tickTime);
+	unsigned int GetMacroTime();
+
 	//bool RegisterMacroKey(const byte key);
 	bool RegisterMacroKey(const byte key, const bool up = false);
-	bool RegisterMacroKey(const DWORD time, const WPARAM keyType, const byte key);
+	bool RegisterMacroKey(const DWORD time, const WPARAM keyType, const byte key,const DWORD scanCode);
 
 	vector<EXTENDED_INPUT> GetRegisterInputs();
 	
