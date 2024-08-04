@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <random>
 
 #include <Windows.h>
 
@@ -21,7 +22,8 @@ private:
 		MACRO_INIT,
 		MACRO_START,
 		MACRO_STOP,
-		MACRO_UPDATE
+		MACRO_UPDATE,
+		MACRO_RANDOM
 	};
 
 	//변수
@@ -64,13 +66,15 @@ public:
 
 	bool Reset();
 
+
 	byte GetMacroStatus();
 	bool MacroStart();
 	bool MacroStop();
 	//스레드 동기화를 위한 함수
-	bool MacroRun();
+	/*bool MacroRun();*/
 //protected:
 	bool MacroUpdate();
+	bool MacroRandom();
 
 public:
 	bool SetMacroTime(int tickTime);

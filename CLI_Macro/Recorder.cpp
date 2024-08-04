@@ -190,7 +190,7 @@ bool RECORDER::LoadRecordData(const string fileName) {
 	path.append(fileName);
 
 	//unsigned int size = sizeof(unsigned short);
-	unsigned int size = 1024;
+	unsigned int size = 65535;
 
 	char* sectionNames = new char[size] {};
 	int recvBytes = 0;
@@ -203,8 +203,8 @@ bool RECORDER::LoadRecordData(const string fileName) {
 
 	unsigned int idx;
 
-	for (idx = recvBytes; idx > 0; idx--) {
-		if (sectionNames[idx-1] = '\0') {
+	for (idx = recvBytes-1; idx > 0; idx--) {
+		if (sectionNames[idx-1] == '\0') {
 			break;
 		}
 	}
@@ -226,7 +226,7 @@ bool RECORDER::LoadRecordData(const string fileName) {
 
 		ZeroMemory(&kh, sizeof(KeyHistory));
 
-		auto order = to_string(++idx);
+		auto order = to_string(idx+1);
 
 		if (GetPrivateProfileStringA(order.c_str(), "RecordingTime", DEFAULT, retString, MAX_PATH, path.c_str()) <= 0) {
 			cerr << "Failed to load record data" << endl;
@@ -242,8 +242,14 @@ bool RECORDER::LoadRecordData(const string fileName) {
 			return false;
 		}
 
+		if (strcmp(retString, "KEYDOWN") == 0) {
+			kh.keyType = WM_KEYDOWN;
+		}
+		else {
+			kh.keyType = WM_KEYUP;
+		}
 
-		kh.keyType = atoi(retString);
+		
 
 		memset(retString, 0, MAX_PATH);
 

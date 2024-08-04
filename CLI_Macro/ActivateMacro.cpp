@@ -158,6 +158,7 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 			MessageBox(NULL, L"Failed to running thread", L"ERROR", NULL);
 			return -1;
 		case MACRO_UPDATE:
+			UPDATE:
 			//SleepConditionVariableCS(&updateCv, &cs, INFINITE);
 			//EnterCriticalSection(&cs);
 			extInputs = actMacro->GetRegisterInputs();
@@ -171,6 +172,7 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 			//WakeConditionVariable(&actMacro->updateConditionVar);
 			WakeConditionVariable(updateCv);
 			break;
+		case MACRO_RANDOM:
 		case MACRO_START: {
 			if (size < 0) {
 				MessageBox(NULL, L"Failed to running thread", L"ERROR", NULL);
@@ -193,13 +195,32 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 				cout << "extInput.recordingTime : " << extInput.recordingTime << endl;
 				SendInput(1, &extInput.input, sizeof(INPUT));
 			}
+			if (macroStat == MACRO_RANDOM) {
+				random_device rd;
+				default_random_engine engine(rd());
+				uniform_int_distribution<int> distribution(0, actMacro->GetAlgorithmCount());
+
+				//임시
+				static int rn;
+				static int old;
+
+				while (rn = distribution(engine)) {
+					if (old != rn) {
+						old = rn;
+						break;
+					}
+				}
+
+				cout << "Random Number : " << rn << endl;
+				actMacro->SelectAlgorithm(rn);
+				//임시 방편..
+				goto UPDATE;
+			}
 		}
 
 		default:
 			break;
 		}
-
-		
 	}
 
 	return 0;
@@ -240,7 +261,6 @@ bool ACTIVATE_MACRO::MacroStart() {
 		break;
 	}
 
-	return true;
 }
 
 bool ACTIVATE_MACRO::MacroStop() {
@@ -250,6 +270,8 @@ bool ACTIVATE_MACRO::MacroStop() {
 	case MACRO_STOP:
 		WarningMessage("Failed to macro stop");
 		return false;
+	case MACRO_RANDOM:
+	case MACRO_UPDATE:
 	case MACRO_START:
 		macroStatus = MACRO_STOP;
 		break;
@@ -264,16 +286,17 @@ bool ACTIVATE_MACRO::MacroStop() {
 	return true;
 }
 
-bool ACTIVATE_MACRO::MacroRun() {
-	if (macroStatus != MACRO_START) {
-		WarningMessage("Not starting macro");
-		return false;
-	}
-
-	ReleaseMutex(macroMtx);
-	//2024-07-22 뮤텍스 개체 소유권 가져오기
-	WaitForSingleObject(macroMtx, INFINITE);
-}
+//2024-08-04 지금 안씀
+//bool ACTIVATE_MACRO::MacroRun() {
+//	if (macroStatus != MACRO_START) {
+//		WarningMessage("Not starting macro");
+//		return false;
+//	}
+//
+//	ReleaseMutex(macroMtx);
+//	//2024-07-22 뮤텍스 개체 소유권 가져오기
+//	WaitForSingleObject(macroMtx, INFINITE);
+//}
 
 bool ACTIVATE_MACRO::MacroUpdate() {
 	EnterCriticalSection(&cs);
@@ -284,6 +307,28 @@ bool ACTIVATE_MACRO::MacroUpdate() {
 	//WakeConditionVariable(&updateConditionVar);
 	SleepConditionVariableCS(&updateConditionVar, &cs, INFINITE);
 	//cs랑 같이 사용해야함
+	return true;
+}
+
+bool ACTIVATE_MACRO::MacroRandom() {
+	switch (GetMacroStatus()) {
+	case MACRO_ERROR:
+	case MACRO_RANDOM:
+		WarningMessage("Failed to random macro");
+		return false;
+		break;
+	case MACRO_INIT:
+	case MACRO_START:
+	case MACRO_STOP:
+	case MACRO_UPDATE:
+		macroStatus = MACRO_RANDOM;
+		break;
+	default:
+		WarningMessage("Failed to random macro");
+		return false;
+		break;
+	}
+
 	return true;
 }
 
@@ -371,10 +416,12 @@ bool ACTIVATE_MACRO::RegisterCurrentAlgorithm() {
 	}
 
 	macroAlgorithms.push_back(inputs);
+
+	return true;
 }
 
 byte ACTIVATE_MACRO::GetAlgorithmCount() {
-	return macroAlgorithms.size();
+	return macroAlgorithms.size()-1;
 }
 
 bool ACTIVATE_MACRO::SelectAlgorithm(int idx) {

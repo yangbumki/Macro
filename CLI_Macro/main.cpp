@@ -23,7 +23,7 @@ bool PrintFileLists(const string path);
 
 
 int main() {
-	ActivateMacro am(100);
+	ActivateMacro am(10);
 	Recorder rc;
 
 	unsigned int ctlVar = 0;
@@ -72,24 +72,31 @@ int main() {
 			am.MacroUpdate();
 			break;
 		}
-		case '2':
-			am.MacroStart();
+		case '2': {
+			string input;
+
+			cout << "Do you wnat to random macro? (Yes/No)" << endl;
+			cout << "INPUT : "; cin >> input; cout << endl;
 			cout << "Macro Start : after 3 seconds" << endl;
 			Sleep(3000);
+			am.MacroStart();
 
-			am.MacroRun();
+			if (input.compare("Yes") == 0) {
+				am.MacroRandom();
+			}
 
-			cout << "If you want to end the macro" << endl;
-			cout << "Press \"ESC\"" << endl;
-			while (1) {
-				if (_kbhit()) {
-					if (_getch() == ESC) {
-						am.MacroStop();
-						break;
+				cout << "If you want to end the macro" << endl;
+				cout << "Press \"ESC\"" << endl;
+				while (1) {
+					if (_kbhit()) {
+						if (_getch() == ESC) {
+							am.MacroStop();
+							break;
+						}
 					}
 				}
-			}
 			break;
+		}
 		case '3': {
 			cout << "===SAVE RECORDING DATA===" << endl;
 			cout << "Please enter the file name" << endl;
@@ -126,9 +133,6 @@ int main() {
 					if (input.compare("END") == 0) {
 						break;
 					}
-
-
-
 					if (rc.LoadRecordData(input)) {
 						cout << "Do you want to register your current algorithm? (Yes/No)" << endl;
 						cout << "INPUT : "; cin >> input; cout << endl;
@@ -138,16 +142,21 @@ int main() {
 						}
 
 						auto rDatas = rc.GetRecordData(ctlVar++);
-
+						
+						am.Reset();
 						for (auto& data : rDatas) {
-							am.Reset();
 							am.RegisterMacroKey(data.recordingTime, data.keyType, data.vkCode, data.scanCode);
 						}
 
-						am.RegisterCurrentAlgorithm();
+						if (!am.RegisterCurrentAlgorithm()) {
+							ctlVar--;
+							break;
+						}
+						am.MacroUpdate();
 					}
 
 					cout << "Do you want to continue loading? (Yes/No)" << endl;
+					cout << "INPUT : "; cin >> input; cout << endl;
 				} while (input.compare("Yes") == 0);
 
 			}
