@@ -1,6 +1,7 @@
 #include <iostream>
 #include <conio.h>
 #include <vector>
+#include <random>
 
 #include <windows.h>
 
@@ -16,6 +17,8 @@
 
 #define TICK_TIME               1000
 
+#define MACRO_TIME				100
+
 using namespace std;
 
 bool PrintFileLists(const string path);
@@ -26,7 +29,7 @@ int main() {
 	vector<ActivateMacro> actMacros;
 	unsigned int idx = 0;
 
-	ActivateMacro tmpActMacro;
+	ActivateMacro tmpActMacro(MACRO_TIME);
 	Recorder rc;
 
 	byte input;
@@ -46,7 +49,7 @@ int main() {
 			rc.ResetRecordData();
 
 			cout << "Recording Start" << endl;
-			cout << "If you want to end the macro" << endl;
+			cout << "If you want to end the Recording" << endl;
 			cout << "Press \"ESC\"" << endl;
 			rc.Recording();
 
@@ -73,7 +76,10 @@ int main() {
 		}
 		case '2':
 			if (actMacros.size() != 0) {
-				int randomNum;
+				default_random_engine generator;
+				uniform_int_distribution<int> distribution(0, actMacros.size()-1);
+
+				int randomNum = distribution(generator);
 				actMacros[randomNum].MacroStart();
 				cout << "Macro Start : after 3 seconds" << endl;
 				Sleep(3000);
@@ -82,10 +88,18 @@ int main() {
 				cout << "If you want to end the macro" << endl;
 				cout << "Press \"ESC\"" << endl;
 				while (1) {
-					actMacros[randomNum].GetMacroStatus();
+					if (actMacros[randomNum].GetMacroStatus() == ::ActivateMacro::MACRO_FINISH) {
+						cout << "Change maco" << endl;
+						actMacros[randomNum].MacroStop();
+
+						randomNum = distribution(generator);
+						actMacros[randomNum].MacroStart();
+						actMacros[randomNum].MacroRun();
+					}
+
 					if (_kbhit()) {
 						if (_getch() == ESC) {
-							tmpActMacro.MacroStop();
+							actMacros[randomNum].MacroStop();
 							break;
 						}
 					}
@@ -101,6 +115,10 @@ int main() {
 				cout << "If you want to end the macro" << endl;
 				cout << "Press \"ESC\"" << endl;
 				while (1) {
+					if (tmpActMacro.GetMacroStatus() == ::ActivateMacro::MACRO_FINISH) {
+						tmpActMacro.MacroStart();
+					}
+
 					if (_kbhit()) {
 						if (_getch() == ESC) {
 							tmpActMacro.MacroStop();
@@ -112,19 +130,19 @@ int main() {
 			break;
 		case '3': {
 			cout << "===SAVE RECORDING DATA===" << endl;
-			cout << "Please enter the file ntmpActMacroe" << endl;
+			cout << "Please enter the file name" << endl;
 			cout << "If you want to stop saving, enter 'END' " << endl;
 
-			string fileNtmpActMacroe{};
+			string input{};
 
-			cout << "File NtmpActMacroe : ";  cin >> fileNtmpActMacroe; cout << endl;
-			if (fileNtmpActMacroe.compare("END") == 0) {
+			cout << "INPUT : ";  cin >> input; cout << endl;
+			if (input.compare("END") == 0) {
 				break;
 			}
 
-			fileNtmpActMacroe.append(".ini");
+			input.append(".ini");
 
-			if (rc.SaveRecordData(fileNtmpActMacroe)) {
+			if (rc.SaveRecordData(input)) {
 				cout << "Success to save data" << endl;
 			}
 			else {
@@ -139,7 +157,7 @@ int main() {
 			if (PrintFileLists("..\\Save")) {
 				string input;
 				do {
-					cout << "Please enter the file ntmpActMacroe" << endl;
+					cout << "Please enter the file name" << endl;
 					cout << "If you wnat to stop loading, enter 'END" << endl;
 
 					cout << "INPUT : "; cin >> input; cout << endl;
@@ -148,8 +166,8 @@ int main() {
 					}
 
 					if (rc.LoadRecordData(input)) {
-						ActivateMacro am;
-						auto rcDatas = rc.GetRecordData(idx);
+						ActivateMacro am(MACRO_TIME);
+						auto rcDatas = rc.GetRecordData(idx++);
 
 						cout << "Mappling Recording Data" << endl;
 
@@ -163,6 +181,8 @@ int main() {
 					}
 					
 					cout << "Do you want to continue loading? (Yes/No)" << endl;
+					cout << "INPUT : "; cin >> input; cout << endl;
+
 				} while (input.compare("Yes") == 0);
 
 			}

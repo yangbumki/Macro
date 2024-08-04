@@ -184,6 +184,7 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 				cout << "extInput.recordingTime : " << extInput.recordingTime << endl;
 				SendInput(1, &extInput.input, sizeof(INPUT));
 			}
+			actMacro->MacroFinish();
 		}
 
 		default:
@@ -213,6 +214,7 @@ bool ACTIVATE_MACRO::MacroStart() {
 		}
 	case MACRO_UPDATE:
 	case MACRO_STOP:
+	case MACRO_FINISH:
 		macroStatus = MACRO_START;
 		break;
 	default:
@@ -252,6 +254,12 @@ bool ACTIVATE_MACRO::MacroRun() {
 	ReleaseMutex(macroMtx);
 	//2024-07-22 뮤텍스 개체 소유권 가져오기
 	WaitForSingleObject(macroMtx, INFINITE);
+}
+
+bool ACTIVATE_MACRO::MacroFinish() {
+	this->macroStatus = MACRO_FINISH;
+
+	return true;
 }
 
 bool ACTIVATE_MACRO::MacroUpdate() {

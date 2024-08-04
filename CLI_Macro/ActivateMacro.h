@@ -14,16 +14,18 @@ typedef struct EXTENDED_INPUT {
 }ExtendedInput;
 
 typedef class ACTIVATE_MACRO {
-private:
+public:
 	//enum
 	enum STATUS {
 		MACRO_ERROR = -1,
 		MACRO_INIT,
 		MACRO_START,
 		MACRO_STOP,
+		MACRO_FINISH,
 		MACRO_UPDATE
 	};
 
+private:
 	//변수
 	vector<vector<ExtendedInput>> datas;
 
@@ -66,6 +68,7 @@ public:
 	bool MacroStop();
 	//스레드 동기화를 위한 함수
 	bool MacroRun();
+	bool MacroFinish();
 
 protected:
 	bool MacroUpdate();

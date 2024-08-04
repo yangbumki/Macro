@@ -201,8 +201,8 @@ bool RECORDER::LoadRecordData(const string fileName) {
 
 	unsigned int idx;
 
-	for (idx = recvBytes; idx > 0; idx--) {
-		if (sectionNames[idx-1] = '\0') {
+	for (idx = recvBytes-1; idx > 0; idx--) {
+		if (sectionNames[idx-1] == '\0') {
 			break;
 		}
 	}
