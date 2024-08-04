@@ -132,8 +132,8 @@ void RECORDER::End() {
 	}
 }
 
-vector<KeyHistory> RECORDER::GetRecordData() {
-	return kbHistory;
+vector<KeyHistory> RECORDER::GetRecordData(int idx) {
+	return idx == -1 ? kbHistory : this->datas[idx];
 }
 
 bool RECORDER::ResetRecordData() {
@@ -148,7 +148,10 @@ bool RECORDER::ResetRecordData() {
 	return true;
 }
 
-bool RECORDER::SaveRecordData(const std::string fileName) {
+bool RECORDER::SaveRecordData(const string fileName) {
+	string path = "..\\Save\\";
+	path.append(fileName);
+	
 	if (kbHistory.empty()) {
 		cerr << "Failed to save record data" << endl;
 		return false;
@@ -157,19 +160,112 @@ bool RECORDER::SaveRecordData(const std::string fileName) {
 	int idx = 0;
 
 	for (auto& kb : kbHistory) {
-		auto appName = to_string(++idx);
+		auto order = to_string(++idx);
 
-		WritePrivateProfileStringA(appName.c_str(), "RecordingTime", to_string(kb.recordingTime).c_str(), fileName.c_str());
+		if (WritePrivateProfileStringA(order.c_str(), "RecordingTime", to_string(kb.recordingTime).c_str(), path.c_str())) {
 
-		if (kb.keyType == WM_KEYDOWN) {
-			WritePrivateProfileStringA(appName.c_str(), "KeyType", "KEYDOWN", fileName.c_str());
+			if (kb.keyType == WM_KEYDOWN) {
+				WritePrivateProfileStringA(order.c_str(), "KeyType", "KEYDOWN", path.c_str());
+			}
+			else if (kb.keyType == WM_KEYUP) {
+				WritePrivateProfileStringA(order.c_str(), "KeyType", "KEYUP", path.c_str());
+			}
+
+			WritePrivateProfileStringA(order.c_str(), "VKCode", to_string(kb.vkCode).c_str(), path.c_str());
+
+			WritePrivateProfileStringA(order.c_str(), "ScanCode", to_string(kb.scanCode).c_str(), path.c_str());
+		} else {
+			return false;
 		}
-		else if (kb.keyType == WM_KEYUP) {
-			WritePrivateProfileStringA(appName.c_str(), "KeyType", "KEYUP", fileName.c_str());
-		}
-
-		WritePrivateProfileStringA(appName.c_str(), "VKCode", to_string(kb.vkCode).c_str(), fileName.c_str());
 	}
+
+	return true;
+}
+
+bool RECORDER::LoadRecordData(const string fileName) {
+	string path = "..\\Save\\";
+
+	path.append(fileName);
+
+	//unsigned int size = sizeof(unsigned short);
+	unsigned int size = 1024;
+
+	char* sectionNames = new char[size] {};
+	int recvBytes = 0;
+
+	recvBytes = GetPrivateProfileSectionNamesA(sectionNames, size, path.c_str());
+	if (recvBytes <= 0) {
+		cerr << "Failed to load record data" << endl;
+		return false;
+	}
+
+	unsigned int idx;
+
+	for (idx = recvBytes; idx > 0; idx--) {
+		if (sectionNames[idx-1] = '\0') {
+			break;
+		}
+	}
+
+	unsigned int maxIdx = atoi(&sectionNames[idx]);
+
+	delete(sectionNames);
+
+	vector<KeyHistory> tmpKeyHistory;
+	KeyHistory kh;
+
+	const char* DEFAULT = "NONE";
+	char retString[MAX_PATH] = { 0, };
+
+	for (idx = 0; idx < maxIdx; idx++) {
+		//2024-08-04
+		//저장 해야될 값이 많아질 경우, 하나의 함수로 묶어서 사용 해야함
+		//Key 값 또한 하나의 구조체와 맵핑된 enum 값을 사용하면 편리
+
+		ZeroMemory(&kh, sizeof(KeyHistory));
+
+		auto order = to_string(++idx);
+
+		if (GetPrivateProfileStringA(order.c_str(), "RecordingTime", DEFAULT, retString, MAX_PATH, path.c_str()) <= 0) {
+			cerr << "Failed to load record data" << endl;
+			return false;
+		}
+
+		kh.recordingTime = atoi(retString);
+
+		memset(retString, 0, MAX_PATH);
+
+		if (GetPrivateProfileStringA(order.c_str(), "KeyType", DEFAULT, retString, MAX_PATH, path.c_str()) <= 0) {
+			cerr << "Failed to load record data" << endl;
+			return false;
+		}
+
+
+		kh.keyType = atoi(retString);
+
+		memset(retString, 0, MAX_PATH);
+
+		if (GetPrivateProfileStringA(order.c_str(), "VKCode", DEFAULT, retString, MAX_PATH, path.c_str()) <= 0) {
+			cerr << "Failed to load record data" << endl;
+			return false;
+		}
+
+		kh.vkCode = atoi(retString);
+
+		memset(retString, 0, MAX_PATH);
+
+		if (GetPrivateProfileStringA(order.c_str(), "ScanCode", DEFAULT, retString, MAX_PATH, path.c_str()) <= 0) {
+			cerr << "Failed to load record data" << endl;
+			return false;
+		}
+
+		kh.scanCode = atoi(retString);
+		memset(retString, 0, MAX_PATH);
+
+		tmpKeyHistory.push_back(kh);
+	}
+
+	this->datas.push_back(tmpKeyHistory);
 
 	return true;
 }

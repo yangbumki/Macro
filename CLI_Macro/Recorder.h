@@ -30,6 +30,9 @@ private:
 	//해당 스레드는 무조건 하나만 컨트롤 할꺼라, 벡터 형태로 받지않음
 	HANDLE threadHandle = NULL;
 
+	//2024-08-04
+	vector<vector<KeyHistory>> datas;
+
 	static DWORD WINAPI RecordingThread(void* arg);
 	static LRESULT CALLBACK KeyHookProc(int nCode, WPARAM wParam, LPARAM lParam);
 
@@ -45,9 +48,10 @@ public:
 	bool Stop();
 	void End();
 
-	vector<KeyHistory> GetRecordData();
+	vector<KeyHistory> GetRecordData(int idx = -1);
 	bool ResetRecordData();
-	bool SaveRecordData(const std::string fileName);
+	bool SaveRecordData(const string fileName);
+	bool LoadRecordData(const string fileName);
 
 }Recorder;
 

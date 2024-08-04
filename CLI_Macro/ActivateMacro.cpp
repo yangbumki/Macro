@@ -335,6 +335,8 @@ bool ACTIVATE_MACRO::RegisterMacroKey(const DWORD time, const WPARAM keyType, co
 
 	inputs.push_back(extInput);
 
+	/*datas.push_back(inputs);*/
+
 	MacroUpdate();
 
 	return true;

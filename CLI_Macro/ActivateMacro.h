@@ -25,6 +25,8 @@ private:
 	};
 
 	//º¯¼ö
+	vector<vector<ExtendedInput>> datas;
+
 	//vector<INPUT> inputs{};
 	vector<ExtendedInput> inputs{};
 	unsigned int tickTime;
