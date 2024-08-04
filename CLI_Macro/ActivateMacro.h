@@ -25,10 +25,11 @@ private:
 	};
 
 	//변수
-	vector<vector<ExtendedInput>> datas;
+	vector<vector<ExtendedInput>> macroAlgorithms;
 
 	//vector<INPUT> inputs{};
 	vector<ExtendedInput> inputs{};
+
 	unsigned int tickTime;
 	signed char macroStatus = MACRO_INIT;
 
@@ -61,13 +62,14 @@ public:
 	ACTIVATE_MACRO(int tickTime = 0);
 	~ACTIVATE_MACRO();
 
+	bool Reset();
+
 	byte GetMacroStatus();
 	bool MacroStart();
 	bool MacroStop();
 	//스레드 동기화를 위한 함수
 	bool MacroRun();
-
-protected:
+//protected:
 	bool MacroUpdate();
 
 public:
@@ -77,6 +79,11 @@ public:
 	//bool RegisterMacroKey(const byte key);
 	bool RegisterMacroKey(const byte key, const bool up = false);
 	bool RegisterMacroKey(const DWORD time, const WPARAM keyType, const byte key,const DWORD scanCode);
+	bool RegisterCurrentAlgorithm();
+
+	byte GetAlgorithmCount();
+	bool SelectAlgorithm(int idx);
+	
 
 	vector<EXTENDED_INPUT> GetRegisterInputs();
 	

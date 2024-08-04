@@ -105,6 +105,8 @@ bool RECORDER::Recording() {
 		}
 	}
 
+	ResetRecordData();
+
 	status = REC_RUNNING;
 
 	return true;

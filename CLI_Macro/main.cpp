@@ -26,6 +26,8 @@ int main() {
 	ActivateMacro am(100);
 	Recorder rc;
 
+	unsigned int ctlVar = 0;
+
 	byte input;
 
 	while (1) {
@@ -41,6 +43,7 @@ int main() {
 		switch (input) {
 		case '1': {
 			rc.ResetRecordData();
+			am.Reset();
 
 			cout << "Recording Start" << endl;
 			cout << "If you want to end the macro" << endl;
@@ -66,6 +69,7 @@ int main() {
 					break;
 				}
 			}
+			am.MacroUpdate();
 			break;
 		}
 		case '2':
@@ -85,7 +89,7 @@ int main() {
 					}
 				}
 			}
-		break;
+			break;
 		case '3': {
 			cout << "===SAVE RECORDING DATA===" << endl;
 			cout << "Please enter the file name" << endl;
@@ -123,7 +127,25 @@ int main() {
 						break;
 					}
 
-					rc.LoadRecordData(input);
+
+
+					if (rc.LoadRecordData(input)) {
+						cout << "Do you want to register your current algorithm? (Yes/No)" << endl;
+						cout << "INPUT : "; cin >> input; cout << endl;
+
+						if (input.compare("Yes") == 0) {
+							am.RegisterCurrentAlgorithm();
+						}
+
+						auto rDatas = rc.GetRecordData(ctlVar++);
+
+						for (auto& data : rDatas) {
+							am.Reset();
+							am.RegisterMacroKey(data.recordingTime, data.keyType, data.vkCode, data.scanCode);
+						}
+
+						am.RegisterCurrentAlgorithm();
+					}
 
 					cout << "Do you want to continue loading? (Yes/No)" << endl;
 				} while (input.compare("Yes") == 0);
@@ -141,12 +163,12 @@ int main() {
 			break;
 		default:
 			cout << "Invalid Value" << endl;
+		}
+		cout << endl << endl;
 	}
-	cout << endl << endl;
-}
 
 EXIT:
-return 0;
+	return 0;
 }
 
 bool PrintFileLists(const string path) {

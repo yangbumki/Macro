@@ -7,7 +7,16 @@ ACTIVATE_MACRO::ACTIVATE_MACRO(int tickTime) {
 }
 
 ACTIVATE_MACRO::~ACTIVATE_MACRO() {
+	for (auto& algorithm : macroAlgorithms) {
+		algorithm.clear();
+	}
 
+	macroAlgorithms.clear();
+
+	Reset();
+
+	CloseHandle(threadHandle);
+	CloseHandle(macroMtx);
 }
 
 void ACTIVATE_MACRO::WarningMessage(const string msg) {
@@ -196,6 +205,18 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 	return 0;
 }
 
+bool ACTIVATE_MACRO::Reset() {
+	if (inputs.size() <= 0) {
+		cerr << "Aleady clear macro" << endl;
+		return false;
+	}
+	
+	this->inputs.clear();
+	inputs.resize(0);
+
+	return true;
+}
+
 byte ACTIVATE_MACRO::GetMacroStatus() {
 	return this->macroStatus;
 }
@@ -337,8 +358,39 @@ bool ACTIVATE_MACRO::RegisterMacroKey(const DWORD time, const WPARAM keyType, co
 
 	/*datas.push_back(inputs);*/
 
-	MacroUpdate();
+	//2024-08-04 자동 매크로 업데이트는 좋으나, 성능 문제로 인해 일단 보류
+	//MacroUpdate();
 
+	return true;
+}
+
+bool ACTIVATE_MACRO::RegisterCurrentAlgorithm() {
+	if (inputs.empty()) {
+		cerr << "Failed to register current algorithm" << endl;
+		return false;
+	}
+
+	macroAlgorithms.push_back(inputs);
+}
+
+byte ACTIVATE_MACRO::GetAlgorithmCount() {
+	return macroAlgorithms.size();
+}
+
+bool ACTIVATE_MACRO::SelectAlgorithm(int idx) {
+	//어차피 사이즈 체크 들어가기 때문에 empty 체크 필요 없음
+	/*if (macroAlgorithms.empty()) {
+		cerr << "Failed to select algorithm" << endl;
+		return false;
+	}
+	else */
+	if (idx < 0 || idx > GetAlgorithmCount()) {
+		cerr<<"Failed to select Algorithm" << endl;
+		return false;
+	}
+
+	inputs = macroAlgorithms[idx];
+	
 	return true;
 }
 
