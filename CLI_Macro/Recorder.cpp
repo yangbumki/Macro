@@ -1,5 +1,7 @@
 #include "Recorder.h"
 
+LONG kbTime = 0;
+
 RECORDER::RECORDER() {
 	status = REC_INIT;
 }
@@ -10,6 +12,8 @@ RECORDER::~RECORDER() {
 	WaitForSingleObject(threadHandle, INFINITE);
 	CloseHandle(threadHandle);
 }
+
+
 
 DWORD WINAPI RECORDER::RecordingThread(void* arg) {
 	Recorder* rc = (Recorder*)arg;
@@ -37,7 +41,19 @@ DWORD WINAPI RECORDER::RecordingThread(void* arg) {
 			if (status == REC_STOP) {
 				// 무한대기
 				while (status != REC_RUNNING) {
+					Sleep(1);
 					status = rc->GetStatus();
+				}
+
+				//임시 방편
+				if (::kbTime != 0) {
+					::kbTime = 0;
+				}
+
+				hookHandle = SetWindowsHookEx(WH_KEYBOARD_LL, rc->KeyHookProc, NULL, NULL);
+				if (hookHandle == NULL) {
+					MessageBoxA(NULL, "Failed to SetWindowsHookEx", "ERROR", NULL);
+					return -1;
 				}
 			}
 			else if (status == REC_END) {
@@ -48,14 +64,18 @@ DWORD WINAPI RECORDER::RecordingThread(void* arg) {
 
 		else {
 			if (GetMessage(&msg, 0, NULL, NULL) != 0) {
+				if (msg.message == WM_QUIT) {
+					break;
+				}
+
 				TranslateMessage(&msg);
 				DispatchMessageW(&msg);
 			}
 
+			UnhookWindowsHookEx(hookHandle);
+			hookHandle = NULL;
 		}
 	}
-
-	UnhookWindowsHookEx(hookHandle);
 
 	return 0;
 }
@@ -73,13 +93,17 @@ LRESULT CALLBACK RECORDER::KeyHookProc(int nCode, WPARAM wParam, LPARAM lParam) 
 	KBDLLHOOKSTRUCT* kls = (KBDLLHOOKSTRUCT*)lParam;
 
 	//GetMessageTime() 함수 동일
-	static LONG time = kls->time;
-	unsigned int recordingTime = kls->time - time;
+	//2024-08-06 로직변경
 
-	//cout << "Recording Time " << (kls->time - time) / 1000 << "." << (kls->time - time) % 1000 << endl;
+	unsigned int recordingTime;
 
- 	cout << "wParam : " << wParam << endl;
-	cout << "lParam : " << lParam<< endl;
+	recordingTime = ::kbTime == 0 ? 0 : kls->time - ::kbTime;
+	::kbTime = kls->time;
+
+	cout << "Recording Time " << recordingTime / 1000 << "." << recordingTime  % 1000 << endl;
+
+ 	/*cout << "wParam : " << wParam << endl;
+	cout << "lParam : " << lParam<< endl;*/
 	cout << "kls->vkCode : " << kls->vkCode << endl;
 	cout << "kls->scanCode : " << kls->scanCode << endl;
 	
@@ -105,7 +129,7 @@ bool RECORDER::Recording() {
 		}
 	}
 
-	ResetRecordData();
+	/*ResetRecordData();*/
 
 	status = REC_RUNNING;
 
@@ -118,11 +142,11 @@ char RECORDER::GetStatus() {
 
 bool RECORDER::Stop() {
 	status = REC_STOP;
-
+	
 	if (threadHandle != NULL) {
 		PostThreadMessage(GetThreadId(threadHandle), WM_QUIT, 1, 0);
 	}
-	
+
 	return true;
 }
 

@@ -39,7 +39,7 @@ int main() {
 		cout << "9. Exit" << endl << endl;
 
 		cout << "INPUT : "; cin >> input; cout << endl;
-
+		
 		switch (input) {
 		case '1': {
 			rc.ResetRecordData();
@@ -53,7 +53,7 @@ int main() {
 			while (1) {
 				if (_kbhit()) {
 					if (_getch() == ESC) {
-						rc.End();
+						rc.Stop();
 						break;
 					}
 				}
@@ -70,6 +70,7 @@ int main() {
 				}
 			}
 			am.MacroUpdate();
+			am.MacroStop();
 			break;
 		}
 		case '2': {
@@ -153,6 +154,7 @@ int main() {
 							break;
 						}
 						am.MacroUpdate();
+						am.MacroStop();
 					}
 
 					cout << "Do you want to continue loading? (Yes/No)" << endl;

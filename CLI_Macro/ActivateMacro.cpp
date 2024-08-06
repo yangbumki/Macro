@@ -20,6 +20,7 @@ ACTIVATE_MACRO::~ACTIVATE_MACRO() {
 }
 
 void ACTIVATE_MACRO::WarningMessage(const string msg) {
+	cout << endl;
 	cout << "===[ACTIVATE_MACRO]===" << endl;
 	cerr << "[WARNING] : " << msg << endl;
 }
@@ -141,6 +142,12 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 
 		//딜레이가 없을 경우, 매크로 자체 입력 값 중복됨
 		if (tickTime > 0) {
+
+			//2024-08-05 대충 추가 삭제해야함
+			static int rn;
+			if (rn != 0)
+				Sleep(tickTime * rn);
+			else
 				Sleep(tickTime);
 		}
 		else {
@@ -151,7 +158,7 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 
 		switch (macroStat) {
 		case MACRO_STOP:
-			while (actMacro->GetMacroStatus() != MACRO_START);
+			while (actMacro->GetMacroStatus() != MACRO_START && actMacro->GetMacroStatus() != MACRO_UPDATE);
 			break;
 		case MACRO_INIT:
 		case MACRO_ERROR:
@@ -189,7 +196,9 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 				macroStat = actMacro->GetMacroStatus();
 				if (macroStat == MACRO_STOP) break;
 
-				Sleep(extInput.recordingTime - prevRecordingTime);
+				//2024-08-06 로직변경
+				//Sleep(extInput.recordingTime - prevRecordingTime);
+				Sleep(extInput.recordingTime);
 				prevRecordingTime = extInput.recordingTime;
 
 				cout << "extInput.recordingTime : " << extInput.recordingTime << endl;
