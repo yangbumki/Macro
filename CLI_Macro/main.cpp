@@ -64,6 +64,9 @@ int main() {
 			cout << "Mappling Recording Data" << endl;
 
 			for (auto& data : rcDatas) {
+				//2024-08-07 일단 첫 기록시 Enter 기록되는 거 로딩 막음
+				if (data.recordingTime == 0 && data.vkCode == 13) continue;
+
 				if (data.vkCode == VK_ESCAPE) break;
 				if (!am.RegisterMacroKey(data.recordingTime, data.keyType, data.vkCode, data.scanCode)) {
 					break;
@@ -146,6 +149,9 @@ int main() {
 						
 						am.Reset();
 						for (auto& data : rDatas) {
+							//2024-08-07 일단 첫 기록시 Enter 기록되는 거 로딩 막음
+							if (data.recordingTime == 0 && data.vkCode == 13) continue;
+
 							am.RegisterMacroKey(data.recordingTime, data.keyType, data.vkCode, data.scanCode);
 						}
 

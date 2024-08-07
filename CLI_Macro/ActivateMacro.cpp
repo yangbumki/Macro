@@ -202,8 +202,15 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 				prevRecordingTime = extInput.recordingTime;
 
 				cout << "extInput.recordingTime : " << extInput.recordingTime << endl;
-				SendInput(1, &extInput.input, sizeof(INPUT));
+				//2024-08-07 차이 확인
+				//SendInput(1, &extInput.input, sizeof(INPUT));
+
+				do {
+					keybd_event(extInput.input.ki.wVk, extInput.input.ki.wScan, extInput.input.ki.dwFlags, 0);
+				}
+				while (!GetAsyncKeyState(extInput.input.ki.wVk));
 			}
+
 			if (macroStat == MACRO_RANDOM) {
 				random_device rd;
 				default_random_engine engine(rd());

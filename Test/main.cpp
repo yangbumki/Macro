@@ -1,138 +1,148 @@
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include <Windows.h>
+#include <conio.h>
 
 using namespace std;
-//
-//HHOOK hook;
-//
-//LRESULT CALLBACK KeyHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
-//	cout << nCode << endl;
-//	cout << wParam << endl;
-//	cout << lParam<< endl;
-//
-//	KBDLLHOOKSTRUCT* kbs;
-//	
-//	kbs = (KBDLLHOOKSTRUCT*)lParam;
-//
-//	return CallNextHookEx(NULL, nCode, wParam, lParam);
-//}
-//
-//int main(int argc, char* argv[], char* env[]) {
-//	hook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyHookProc, NULL, NULL);
-//	if (hook == NULL) {
-//		cerr << "Failed to call SetWindowsHookEx" << endl;
-//		return -1;
-//	}
-//	MSG msg;
-//
-//	while (GetMessage(&msg, NULL, 0, 0)) {
-//		TranslateMessage(&msg);
-//		DispatchMessageW(&msg);
-//	}
-//	
-//	return 0;
-//}
 
-HWND procHwnd;
+bool recordingStat = FALSE;
 
-bool GetWindow(const DWORD pid) {
-	HWND topHwnd = GetTopWindow(NULL);
-	HWND curHwnd = topHwnd;
+vector<RAWINPUT> rawinputs{};
 
-	DWORD curPid = 0;
-
-	while (curHwnd) {
-		GetWindowThreadProcessId(curHwnd, &curPid);
-		if (curPid == pid) {
-			procHwnd = curHwnd;
-			return true;
+LRESULT CALLBACK wndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+	switch (uMsg) {
+	case WM_INPUT: {
+		// Raw Input 데이터 처리
+		UINT dwSize;
+		GetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
+		LPBYTE lpb = new BYTE[dwSize];
+		if (lpb == NULL) {
+			return 0;
 		}
-		curHwnd = ::GetNextWindow(curHwnd, GW_HWNDNEXT);
+
+		if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize) {
+			std::cerr << "GetRawInputData does not return correct size\n";
+		}
+
+		RAWINPUT* raw = (RAWINPUT*)lpb;
+
+		if (recordingStat) {
+			cout << "Recording" << endl;
+			rawinputs.push_back(*raw);
+		}
+
+		if (raw->header.dwType == RIM_TYPEKEYBOARD) {
+			RAWKEYBOARD rawKB = raw->data.keyboard;
+			std::cout << "MakeCode: " << rawKB.MakeCode << ", Flags: " << rawKB.Flags
+				<< ", Reserved: " << rawKB.Reserved << ", VKey: " << rawKB.VKey
+				<< ", Message: " << rawKB.Message << std::endl;
+		}
+
+		delete[] lpb;
+		return 0;
 	}
-
-	cerr << "Failed to get window" << endl;
-
-	return false;
+	case WM_DESTROY: {
+		PostQuitMessage(0);
+		return 0;
+	}
+	default:
+		return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	}
+	return 0;
 }
 
-int main() {
-	HWND hwnd;
+DWORD WINAPI RawWndRegisterThreadFunc(void* arg) {
+	WNDCLASS wc{};
 
-	hwnd = FindWindowA(NULL, "MapleStory");
+	wc.lpfnWndProc = wndProc;
+	wc.hInstance = GetModuleHandle(NULL);
+	wc.lpszClassName = L"TEST";
+
+	RegisterClass(&wc);
+
+	HWND hwnd = CreateWindowEx(0, L"TEST", L"TEST", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, GetModuleHandle(NULL), NULL);
 	if (hwnd == NULL) {
-		cerr << "Failed to FindWindowA" << endl;
+		cerr << "Failed to create window \n";
 		return -1;
 	}
 
-	
+	ShowWindow(hwnd, SW_SHOW);
 
-	RECT rect{};
-	GetWindowRect(hwnd, &rect);
+	SetActiveWindow(hwnd);
 
-	UINT deviceCnt;
-	RAWINPUTDEVICELIST* deviceLists = nullptr;
+	RAWINPUTDEVICE rid{};
 
-	if (GetRawInputDeviceList(NULL, &deviceCnt, sizeof(RAWINPUTDEVICELIST)) == 0) {
-		deviceLists = new RAWINPUTDEVICELIST[deviceCnt];
+	rid.usUsagePage = 0x01;
+	rid.usUsage = 0x06;
+	rid.dwFlags = 0;
+	rid.hwndTarget = hwnd;
 
-		if (GetRawInputDeviceList(deviceLists, &deviceCnt, sizeof(RAWINPUTDEVICELIST)) == -1) {
-			cerr << "Failed to GetRawInputDeviceList" << endl;
-		}
+	if (!RegisterRawInputDevices(&rid, 1, sizeof(rid))) {
+		cerr << "Failed to regitser raw input device \n";
+		return -1;
 	}
 
-	cout << "===DEVICE LISTS===" << endl;
-	for (int idx = 0; idx < deviceCnt; idx++) {
-		cout << "TYPE : " << deviceLists[idx].dwType << endl;
-		cout << "HANDLE : " << deviceLists[idx].hDevice << endl;
+	MSG msg{};
 
-		char buf[MAX_PATH] = {0, };
-		UINT bufSize = MAX_PATH;
+	while (GetMessage(&msg, NULL, 0, 0) != 0) {
+		TranslateMessage(&msg);
+		DispatchMessageW(&msg);
+	}
+}
 
-		if (deviceLists[idx].dwType == RIM_TYPEKEYBOARD) {
-			if (GetRawInputDeviceInfo(deviceLists[idx].hDevice, RIDI_DEVICENAME, buf, &bufSize) != -1) {
-				for (int i = 0; i < bufSize; i++) {
-					cout << buf[i];
-				}
-				RAWINPUT ri;
-				GetRawInputData(
+int main(int argc, char* argv[]) {
+	HANDLE registerThread;
 
-				cout << endl;
-			}
-		}
+
+	registerThread = CreateThread(NULL, 0, RawWndRegisterThreadFunc, NULL, NULL, NULL);
+	if (registerThread == NULL) {
+		cerr << "Failed to create thread \n";
+		return -1;
 	}
 
-	std::cout << endl << endl;
+	DWORD select;
 
-	
-
-	RAWINPUT rawInput;
-
-	rawInput.header.dwType = RIM_TYPEKEYBOARD;
-	rawInput.data.keyboard.VKey = VK_ESCAPE;
+	HWND maple = FindWindow(NULL, L"MapleStory");
+	if (maple == NULL) {
+		cerr << "Failed to find window \n";
+		return 0;
+	}
 
 	while (1) {
-		Sleep(1000);
+		if (_kbhit()) {
+			switch (_getch()) {
+			case VK_RETURN:
+				cout << "===RECORDING===\n";
+				recordingStat = !recordingStat;
+				break;
+			case VK_TAB: {
+				auto  lparamData = 0b000000000000000010000000000000001;
+				for (auto& input : rawinputs) {
+					SendMessage(maple, WM_ACTIVATEAPP, 1, 0);
+					SendMessage(maple, WM_ACTIVATE, 1, 0);
+					PostMessage(maple, WM_KEYDOWN, input.data.keyboard.VKey, lparamData);
+					PostMessage(maple, WM_CHAR, 27, 0);
+					PostMessage(maple, WM_INPUT, RIM_INPUT, (LPARAM)&input);
+					PostMessage(maple, WM_KEYUP, input.data.keyboard.VKey, lparamData);
+				}
+				break;
+			}
+			case VK_ESCAPE:
+				TerminateThread(registerThread, 0);
+				WaitForSingleObject(registerThread, INFINITE);
+				CloseHandle(registerThread);
+				registerThread = NULL;
+				goto END;
+				break;
+			default:
+				break;
+			}
 
-		EnableWindow(hwnd, true);
-		SetActiveWindow(hwnd);
-		SetFocus(hwnd);
-		
-		DWORD lParam = 0b00000000000000010000000000000001;
-
-		SendMessage(hwnd, WM_INPUT, RIM_INPUT, 1);
-		SendMessage(hwnd, WM_WINDOWPOSCHANGING, NULL, 0x0014EAD0);
-		SendMessage(hwnd, WM_WINDOWPOSCHANGED, NULL, 0x0014EAD0);
-		SendMessage(hwnd, WM_ACTIVATEAPP, true, 0);
-		SendMessage(hwnd, WM_ACTIVATE, WA_CLICKACTIVE, 0);
-		SendMessage(hwnd, WM_IME_SETCONTEXT, TRUE, 0xC000000F);
-		SendMessage(hwnd, WM_IME_NOTIFY, IMN_OPENSTATUSWINDOW, 2);
-		SendMessage(hwnd, WM_SETFOCUS, FALSE, 0);
-		
-		PostMessage(hwnd, WM_KEYDOWN, VK_ESCAPE, lParam);
-		//PostMessage(hwnd, WM_KEYUP, VK_ESCAPE, lParam);
+		}
 	}
 
+END:
 	return 0;
 }

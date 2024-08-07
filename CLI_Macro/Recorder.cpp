@@ -95,12 +95,12 @@ LRESULT CALLBACK RECORDER::KeyHookProc(int nCode, WPARAM wParam, LPARAM lParam) 
 	//GetMessageTime() 함수 동일
 	//2024-08-06 로직변경
 
-	unsigned int recordingTime;
+	double recordingTime;
 
 	recordingTime = ::kbTime == 0 ? 0 : kls->time - ::kbTime;
 	::kbTime = kls->time;
 
-	cout << "Recording Time " << recordingTime / 1000 << "." << recordingTime  % 1000 << endl;
+	cout << "Recording Time " << recordingTime / 1000 << "." << (int)recordingTime  % 1000 << endl;
 
  	/*cout << "wParam : " << wParam << endl;
 	cout << "lParam : " << lParam<< endl;*/
