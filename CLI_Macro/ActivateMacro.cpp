@@ -4,6 +4,8 @@ ACTIVATE_MACRO::ACTIVATE_MACRO(int tickTime) {
 	SetMacroTime(tickTime);
 
 	this->MacroStart();
+	//2024-08-08 매크로 스레드 돌아감 방지
+	this->MacroStop();
 }
 
 ACTIVATE_MACRO::~ACTIVATE_MACRO() {
@@ -199,18 +201,17 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 				//2024-08-06 로직변경
 				//Sleep(extInput.recordingTime - prevRecordingTime);
 				Sleep(extInput.recordingTime);
-				prevRecordingTime = extInput.recordingTime;
 
 				cout << "extInput.recordingTime : " << extInput.recordingTime << endl;
 				//2024-08-07 차이 확인
-				//SendInput(1, &extInput.input, sizeof(INPUT));
+				/*SendInput(1, &extInput.input, sizeof(INPUT));*/
 				keybd_event(extInput.input.ki.wVk, extInput.input.ki.wScan, extInput.input.ki.dwFlags, 0);
 				/*auto result = GetAsyncKeyState(extInput.input.ki.dwFlags);
 				cout << "Result : " << result << endl;*/
 
 				//do {
-				//	SendInput(1, &extInput.input, sizeof(INPUT));
-				//	/*keybd_event(extInput.input.ki.wVk, extInput.input.ki.wScan, extInput.input.ki.dwFlags, 0);*/
+				//	/*SendInput(1, &extInput.input, sizeof(INPUT));*/
+				//	keybd_event(extInput.input.ki.wVk, extInput.input.ki.wScan, extInput.input.ki.dwFlags, 0);
 				//}
 				//while (!GetAsyncKeyState(extInput.input.ki.wVk));
 			}
@@ -224,12 +225,15 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 				static int rn;
 				static int old;
 
-				while (rn = distribution(engine)) {
+				//2024-08-08 랜덤 알고리즘 수정
+				do {
+					rn = distribution(engine);
 					if (old != rn) {
 						old = rn;
 						break;
 					}
-				}
+
+				} while (1);
 
 				cout << "Random Number : " << rn << endl;
 				actMacro->SelectAlgorithm(rn);
