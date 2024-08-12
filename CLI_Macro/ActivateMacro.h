@@ -9,6 +9,9 @@
 
 using namespace std;
 
+#define DURATION_MIN	5
+#define DURATION_MAX	10
+
 typedef struct EXTENDED_INPUT {
 	DWORD recordingTime;
 	INPUT input;

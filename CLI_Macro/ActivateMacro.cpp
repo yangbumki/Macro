@@ -139,6 +139,11 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 
 	byte macroStat = 0;
 
+	//랜덤 변수
+	random_device rd;
+	default_random_engine engine(rd());
+	uniform_int_distribution<int> recordingRandomTime(DURATION_MIN, DURATION_MAX);
+
 	while (true) {
 		macroStat = actMacro->GetMacroStatus();
 
@@ -192,7 +197,7 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 				SendInput(2, &inputs[cnt], sizeof(INPUT));
 			}*/
 
-			unsigned int prevRecordingTime = 0;
+			unsigned int randomDuration = 0;
 
 			for (auto& extInput : extInputs) {
 				macroStat = actMacro->GetMacroStatus();
@@ -200,9 +205,24 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 
 				//2024-08-06 로직변경
 				//Sleep(extInput.recordingTime - prevRecordingTime);
-				Sleep(extInput.recordingTime);
+				//2024-08-10 랜덤 값 적용
+				randomDuration = recordingRandomTime(engine);
+				cout << "extInput.recordingTime : " << extInput.recordingTime << " randomDuration : " << randomDuration << endl;
 
-				cout << "extInput.recordingTime : " << extInput.recordingTime << endl;
+				//2의 배수일 경우
+				if (randomDuration % 2 == 0) {
+					//마이너스
+					extInput.recordingTime <= randomDuration ? Sleep(randomDuration) : Sleep(extInput.recordingTime - randomDuration);
+				}
+				else {
+					//플러스
+					Sleep(extInput.recordingTime + randomDuration);
+				}
+
+
+				//cout << "extInput.recordingTime : " << extInput.recordingTime << endl;
+				
+				
 				//2024-08-07 차이 확인
 				/*SendInput(1, &extInput.input, sizeof(INPUT));*/
 				keybd_event(extInput.input.ki.wVk, extInput.input.ki.wScan, extInput.input.ki.dwFlags, 0);
@@ -217,17 +237,15 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 			}
 
 			if (macroStat == MACRO_RANDOM) {
-				random_device rd;
-				default_random_engine engine(rd());
-				uniform_int_distribution<int> distribution(0, actMacro->GetAlgorithmCount());
-
+				//2024-08-10 한번 지정된 최댓 값 변경 불가로 매번생성
+				uniform_int_distribution<int> marcoAlgorithm(0, actMacro->GetAlgorithmCount());
 				//임시
 				static int rn;
 				static int old;
 
 				//2024-08-08 랜덤 알고리즘 수정
 				do {
-					rn = distribution(engine);
+					rn = marcoAlgorithm(engine);
 					if (old != rn) {
 						old = rn;
 						break;
@@ -235,7 +253,9 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 
 				} while (1);
 
+				cout << "===CHANGE ALGORITHM===\n";
 				cout << "Random Number : " << rn << endl;
+
 				actMacro->SelectAlgorithm(rn);
 				//임시 방편..
 				goto UPDATE;
