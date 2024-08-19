@@ -137,7 +137,9 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 
 	unsigned int tickTime = actMacro->GetMacroTime();
 
-	byte macroStat = 0;
+	//2024-08-19 byte -> int
+	//byte macroStat = 0;
+	int macroStat = 0;
 
 	//랜덤 변수
 	random_device rd;
@@ -165,7 +167,9 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 
 		switch (macroStat) {
 		case MACRO_STOP:
-			while (actMacro->GetMacroStatus() != MACRO_START && actMacro->GetMacroStatus() != MACRO_UPDATE);
+			//2024-08-19 stop 알고리즘 변경
+			/*while (actMacro->GetMacroStatus() != MACRO_START && actMacro->GetMacroStatus() != MACRO_UPDATE);*/
+			while (actMacro->GetMacroStatus() == MACRO_STOP) Sleep(1);
 			break;
 		case MACRO_INIT:
 		case MACRO_ERROR:
@@ -197,11 +201,23 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 				SendInput(2, &inputs[cnt], sizeof(INPUT));
 			}*/
 
-			unsigned int randomDuration = 0;
+			//2024-08-19 macro play 변수 추가
+			int prevMacroStat = macroStat;
 
+			unsigned int randomDuration = 0;
+			
 			for (auto& extInput : extInputs) {
 				macroStat = actMacro->GetMacroStatus();
-				if (macroStat == MACRO_STOP) break;
+				//2024-08-19 스탑 알고리즘 변경
+				/*if (macroStat == MACRO_STOP) break;*/
+				if (macroStat == MACRO_STOP) {
+					//Sleep(1) 중요 없으면 릴리즈 동작 x
+					while ((macroStat = actMacro->GetMacroStatus()) == MACRO_STOP) Sleep(1);
+					
+					if (macroStat != MACRO_PLAY) break;
+
+					actMacro->macroStatus = macroStat =  prevMacroStat;
+				}
 
 				//2024-08-06 로직변경
 				//Sleep(extInput.recordingTime - prevRecordingTime);
@@ -260,9 +276,12 @@ DWORD WINAPI ACTIVATE_MACRO::MacroThread(LPVOID args) {
 				//임시 방편..
 				goto UPDATE;
 			}
-		}
 
+			break;
+		}
 		default:
+			cout << "===ACTIVATE MACRO THREAD === \n";
+			cout << "Macro status is starnge \n";
 			break;
 		}
 	}
@@ -282,7 +301,8 @@ bool ACTIVATE_MACRO::Reset() {
 	return true;
 }
 
-byte ACTIVATE_MACRO::GetMacroStatus() {
+//byte ACTIVATE_MACRO::GetMacroStatus() {
+int ACTIVATE_MACRO::GetMacroStatus() {
 	return this->macroStatus;
 }
 
@@ -326,6 +346,13 @@ bool ACTIVATE_MACRO::MacroStop() {
 	if (threadHandle != NULL) {
 		PostThreadMessage(GetThreadId(threadHandle), WM_QUIT, 1, 0);
 	}
+
+	return true;
+}
+
+bool ACTIVATE_MACRO::MacroPlay() {
+	// 2024-08-19 기존의 방식이 아닌 매크로 스탯 자체를 변경하는 방식으로 변경
+	macroStatus = MACRO_PLAY;
 
 	return true;
 }
@@ -396,7 +423,8 @@ bool ACTIVATE_MACRO::MacroRandom() {
 //	return true;
 //}
 
-bool ACTIVATE_MACRO::RegisterMacroKey(const byte key, const bool up) {
+//bool ACTIVATE_MACRO::RegisterMacroKey(const byte key, const bool up) {
+bool ACTIVATE_MACRO::RegisterMacroKey(const WORD key, const bool up) {
 	if (macroStatus == MACRO_INIT) {
 		cerr << "Failed to register macro key" << endl;
 		cerr << "Plz start macro" << endl;
@@ -420,7 +448,8 @@ bool ACTIVATE_MACRO::RegisterMacroKey(const byte key, const bool up) {
 	return true;
 }
 
-bool ACTIVATE_MACRO::RegisterMacroKey(const DWORD time, const WPARAM keyType, const byte key, const DWORD scanCode) {
+//bool ACTIVATE_MACRO::RegisterMacroKey(const DWORD time, const WPARAM keyType, const byte key, const DWORD scanCode) {
+bool ACTIVATE_MACRO::RegisterMacroKey(const DWORD time, const WPARAM keyType, const WORD key, const DWORD scanCode) {
 	if (macroStatus == MACRO_INIT) {
 		cerr << "Failed to register macro key" << endl;
 		cerr << "Plz start macro" << endl;

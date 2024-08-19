@@ -20,8 +20,6 @@ using namespace std;
 
 bool PrintFileLists(const string path);
 
-
-
 int main() {
 	ActivateMacro am(10);
 	Recorder rc;
@@ -39,7 +37,7 @@ int main() {
 		cout << "9. Exit" << endl << endl;
 
 		cout << "INPUT : "; cin >> input; cout << endl;
-		
+
 		switch (input) {
 		case '1': {
 			rc.ResetRecordData();
@@ -83,22 +81,70 @@ int main() {
 			cout << "INPUT : "; cin >> input; cout << endl;
 			cout << "Macro Start : after 3 seconds" << endl;
 			Sleep(3000);
-			am.MacroStart();
-
 			if (input.compare("Yes") == 0) {
 				am.MacroRandom();
 			}
+			else {
+				am.MacroStart();
+			}
 
-				cout << "If you want to end the macro" << endl;
-				cout << "Press \"ESC\"" << endl;
-				while (1) {
-					if (_kbhit()) {
-						if (_getch() == ESC) {
-							am.MacroStop();
+			
+
+			//2024-08-19 macro play 추가
+			/*cout << "If you want to end the macro" << endl;
+			cout << "Press \"ESC\"" << endl;
+			while (1) {
+				if (_kbhit()) {
+					if (_getch() == ESC) {
+						am.MacroStop();
+						break;
+					}
+				}
+			}*/
+
+			cout << "If you want to stop the macro \n";
+			cout << "Select macro \n";
+
+			HWND console = GetConsoleWindow();
+
+			while (1) {
+				//Sleep(1);
+				if (GetForegroundWindow() == console) {
+					am.MacroStop();
+
+					cout << "Do you want to play macro? (yes/no) \n";
+					cout << "INPUT : "; cin >> input;
+
+					if (input.compare("Yes") == 0 || input.compare("yes") == 0) {
+						cout << "Macro Play ... after 3 seconds\n";
+						Sleep(3000);
+						am.MacroPlay();
+					}
+					else {
+						cout << "Do you want to start macro? (yes/no) \n";
+						cout << "INPUT : "; cin >> input;
+						if (input.compare("Yes") == 0 || input.compare("yes") == 0) {
+							cout << "Do you want to random macro? (yes/no) \n";
+							cout << "INPUT : "; cin >> input;
+							if (input.compare("Yes") == 0 || input.compare("yes") == 0) {
+								cout << "Macro start randomly ... after 3 seconds \n";
+								Sleep(3000);
+								am.MacroRandom();
+							}
+							else {
+								cout << "Macro start ... after 3 seconds \n";
+								Sleep(3000);
+								am.MacroStart();
+							}
+						}
+						else {
+							cout << "Return the main. \n";
 							break;
 						}
 					}
 				}
+			}
+
 			break;
 		}
 		case '3': {
@@ -146,7 +192,7 @@ int main() {
 						}
 
 						auto rDatas = rc.GetRecordData(ctlVar++);
-						
+
 						am.Reset();
 						for (auto& data : rDatas) {
 							//2024-08-07 일단 첫 기록시 Enter 기록되는 거 로딩 막음
